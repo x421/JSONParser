@@ -1,0 +1,80 @@
+package main
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestReadElementsFile(t *testing.T) {
+	_, elems, _, _ := readElementsFile("./test_json/test2.json")
+
+	if elems[0].id != 73 || elems[0].title != 3 ||
+		elems[0].value != -1 || elems[0].idStrNum != 2 ||
+		elems[0].params != 4 || elems[0].values != -1 ||
+		elems[0].level != 2{
+		t.Errorf("Error while read fist element from test2.json")
+	}
+
+	if elems[1].id != 345 || elems[1].title != 6 ||
+		elems[1].value != -1 || elems[1].idStrNum != 5 ||
+		elems[1].params != -1 || elems[1].values != -1 ||
+		elems[1].level != 3{
+		t.Errorf("Error while read second element from test2.json")
+	}
+
+}
+
+func TestReadValuesFile(t *testing.T) {
+	vals, _:=readValuesFile("./test_json/testValues.json")
+
+	if vals[0].id != 34 || vals[0].str != "298" {
+		t.Errorf("Error while read first value")
+	}
+
+	if vals[1].id != 146 || vals[1].str != "\"Валидация\"" {
+		t.Errorf("Error while read second value")
+	}
+}
+
+func TestWriteResultFile(t *testing.T) {
+	original, _, cnt1, _ := readElementsFile("./test_json/test1.json")
+
+	writeResultFile("./test_json/tmp.json", original)
+
+	strs, _, cnt2, _ := readElementsFile("./test_json/test1.json")
+
+	if cnt1 != cnt2 {
+		t.Errorf("String numbers not equals: %d != %d", cnt1, cnt2)
+	}
+
+	for i:=0; i < cnt1; i++ {
+		if strings.Compare(original[i], strs[i]) != 0 {
+			t.Errorf("Write func works incorrect: %s != %s", original[i], strs[i])
+		}
+
+	}
+}
+
+func TestFormNewStr(t *testing.T) {
+	str:="\"value\": \"old\""
+	str=formNewStr(str, "\"new\"")
+	if strings.Contains(str, "\"value\": \"new\"") == false {
+		t.Errorf("test_formNewStr failed! %s != %s", str, "\"value\": \"new\"")
+	}
+}
+
+func TestSetString(t *testing.T) {
+	strs, elems, _, _ := readElementsFile("./test_json/test1.json")
+
+	setString(elems[0], elems[1], strs)
+	if strings.Contains(strs[elems[0].value], "SellerX") == false {
+		t.Errorf("test_setString failed! (set value)")
+	}
+
+	strs, elems, _, _ = readElementsFile("./test_json/test2.json")
+
+	setString(elems[0], elems[1], strs)
+	if strings.Contains(strs[elems[0].title], "SellerX") == false {
+		t.Errorf("test_setString failed! (set title)")
+	}
+}

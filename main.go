@@ -8,6 +8,12 @@ import (
 	"strings"
 )
 
+/*
+	Структура, представляющая собой один элемент(значение или параметр)
+	из файла TestcaseStructure.json
+	id - id структуры из файла
+	idStrNum level title value values params:= Номера строк соответствующих параметров
+ */
 type Element struct{
 	id int
 	idStrNum int
@@ -18,11 +24,20 @@ type Element struct{
 	params int
 }
 
+/*
+	Структура для представления правил замены из файла Values.json
+	Две идентичные к файлу переменные
+ */
 type Values struct {
 	id int
 	str string
 }
 
+/*
+	Функция чтения файла TestcaseStructure.json. Заполняет массив структур
+	Element.
+	path - путь к файлу
+ */
 func readElementsFile(path string) ([]string, []Element, int, int){
 	file, _ := os.Open(path)
 	var fileStrings []string
@@ -79,11 +94,15 @@ func readElementsFile(path string) ([]string, []Element, int, int){
 	}
 	structs=append(structs, tmp)
 	idsCnt++
-	i++
 
 	return fileStrings, structs, i, idsCnt
 }
 
+/*
+	Функция чтения файла Values.json. Заполняет массив структур
+	Values.
+	path - путь к файлу
+*/
 func readValuesFile(path string) ([]Values, int) {
 	var toChange []Values
 	changeFile, _ := os.Open(path)
@@ -101,7 +120,7 @@ func readValuesFile(path string) ([]Values, int) {
 			tcTmp.id = id
 		} else if strings.Contains(str, "\"value\":") {
 			s := str[strings.Index(str, ":")+2: len(str)]
-			tcTmp.str = s
+			tcTmp.str = strings.TrimSpace(s)
 			toChange=append(toChange, tcTmp)
 			j++
 		}
@@ -110,6 +129,11 @@ func readValuesFile(path string) ([]Values, int) {
 	return toChange, j
 }
 
+/*
+	Запись выходного файла StructureWithValues.json
+	path - путь к выходному файлу
+	fileStrings - построчное представление записываемого файла
+*/
 func writeResultFile(path string, fileStrings []string) {
 	output, _ := os.Create(path)
 	w := bufio.NewWriter(output)
@@ -120,15 +144,30 @@ func writeResultFile(path string, fileStrings []string) {
 	w.Flush()
 }
 
+/*
+	Функция формирования измененной строки.
+	(Замена value или title в строке)
+	in - строка, подлежащая перезаписи
+	concat - добавляемое значение
+ */
 func formNewStr(in string, concat string) string {
 	return in[0:strings.Index(in, ":")+2]+concat
 }
 
+/*
+	Функция замены элемента title или value
+	a - значение заменяемого элемента
+	b - значение замещающего элемента
+	fileStrings - строки выходного файла
+ */
 func setString(a Element, b Element, fileStrings []string) {
 	str:= ""
 	if b.title > 0 {
-		str = fileStrings[b.title][strings.Index(fileStrings[a.value], ":")+2:len(fileStrings[b.title])]
+		str = fileStrings[b.title][strings.Index(fileStrings[b.title], ":")+2:len(fileStrings[b.title])]
+	} else if b.value > 0 {
+		str = fileStrings[b.title][strings.Index(fileStrings[b.value], ":")+2:len(fileStrings[b.value])]
 	}
+
 	if a.value > 0 {
 		fileStrings[a.value]=formNewStr(fileStrings[a.value], str)
 	}else if a.title > 0 {
@@ -140,7 +179,7 @@ func main() {
 	fileStrings, structs, _, idsCnt := readElementsFile("D:/go.json")
 	toChange, j:= readValuesFile("D:/values.json")
 
-	for a := 0; a < idsCnt-1; a++ {
+	for a := 0; a < idsCnt; a++ {
 		for b := 0; b < j; b++ {
 			if structs[a].id == toChange[b].id {
 				if structs[a].values < 0 && structs[a].params < 0 && structs[a].value > 0 {
