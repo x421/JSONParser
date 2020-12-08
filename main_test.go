@@ -1,9 +1,25 @@
 package main
 
 import (
+	"os"
 	"strings"
 	"testing"
 )
+
+func TestMain(m *testing.M) {
+
+}
+
+func TestValidateElement(t *testing.T) {
+	elem:= Element{1, 1, 1, 1, -1, -1, -1}
+	validateElement(elem)
+
+	elem= Element{1, 1, 1, 1, 1, 1, -1}
+	validateElement(elem)
+
+	elem= Element{1, 1, 1, 1, -1, -1, 1}
+	validateElement(elem)
+}
 
 func TestReadElementsFile(t *testing.T) {
 	_, elems, _, _ := readElementsFile("./test_json/test2.json")
@@ -53,6 +69,8 @@ func TestWriteResultFile(t *testing.T) {
 		}
 
 	}
+
+	os.Remove("./test_json/tmp.json")
 }
 
 func TestFormNewStr(t *testing.T) {

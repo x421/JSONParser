@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"fmt"
 	"os"
 	"strconv"
 	"strings"
@@ -33,11 +32,34 @@ type Values struct {
 	str string
 }
 
+
+func writeError() {
+	writeResultFile("./error.json", []string{
+		"{",
+		"\t\"error\": {",
+		"\t\t\"message\": \"Входные файлы некорректны\"",
+		"\t}",
+		"}" })
+
+	panic("Error while parse file!")
+}
+
+func validateElement(elem Element) {
+
+	if (elem.id < 0) || (elem.title < 0) ||
+		(elem.params > 0) && (elem.value + elem.values != -2) ||
+		(elem.value > 0) && (elem.params > 0) {
+
+		writeError()
+	}
+
+}
+
 /*
 	Функция чтения файла TestcaseStructure.json. Заполняет массив структур
 	Element.
 	path - путь к файлу
- */
+*/
 func readElementsFile(path string) ([]string, []Element, int, int){
 	file, _ := os.Open(path)
 	var fileStrings []string
@@ -59,34 +81,27 @@ func readElementsFile(path string) ([]string, []Element, int, int){
 			tmp = Element{ id, i, strings.Count(str, "\t"), -1, -1, -1, -1}
 			strct = true
 		} else if strings.Contains(str, "\"id\":") && strct == true {
-			if (tmp.params > 0 && tmp.title < 0) && tmp.value < 0{
-				fmt.Print("Error\n")
-			} else {
-				structs=append(structs, tmp)
-				s := str[strings.Index(str, ":")+2:strings.Index(str, ",")]
-				id, _ := strconv.Atoi(s)
-				tmp = Element{ id, i, strings.Count(str, "\t"), -1, -1, -1, -1}
+			validateElement(tmp)
+			structs=append(structs, tmp)
+			s := str[strings.Index(str, ":")+2:strings.Index(str, ",")]
+			id, _ := strconv.Atoi(s)
+			tmp = Element{ id, i, strings.Count(str, "\t"), -1, -1, -1, -1}
 
-				idsCnt++
-			}
+			idsCnt++
 		}
 
 
 		if strct == true {
 			if strings.Contains(str, "\"title\":") {
 				tmp.title = i
-			}
-
-			if strings.Contains(str, "\"value\":") {
+			} else if strings.Contains(str, "\"value\":") {
 				tmp.value = i
-			}
-
-			if strings.Contains(str, "\"values\":") {
+			} else if strings.Contains(str, "\"values\":") {
 				tmp.values = i
-			}
-
-			if strings.Contains(str, "\"params\":") {
+			} else if strings.Contains(str, "\"params\":") {
 				tmp.params = i
+			} else {
+				writeError()
 			}
 		}
 
@@ -110,20 +125,29 @@ func readValuesFile(path string) ([]Values, int) {
 
 	var tcTmp Values
 	j:=0
+	strNum:=0
+	idStrNum:=0
 
 	for scanner.Scan() {
 		str:=scanner.Text()
 
 		if strings.Contains(str, "\"id\":") {
-			s := str[strings.Index(str, ":")+2:strings.Index(str, ",")]
+			s := str[strings.Index(str, ":")+2 : strings.Index(str, ",")]
 			id, _ := strconv.Atoi(s)
 			tcTmp.id = id
-		} else if strings.Contains(str, "\"value\":") {
+			idStrNum = strNum
+		}else if strings.Contains(str, "\"value\":"){
+			if idStrNum+1 != strNum {
+				writeError()
+			}
 			s := str[strings.Index(str, ":")+2: len(str)]
 			tcTmp.str = strings.TrimSpace(s)
 			toChange=append(toChange, tcTmp)
 			j++
+		}else if idStrNum+1 != strNum {
+			writeError()
 		}
+		strNum++
 	}
 
 	return toChange, j
@@ -162,10 +186,10 @@ func formNewStr(in string, concat string) string {
  */
 func setString(a Element, b Element, fileStrings []string) {
 	str:= ""
-	if b.title > 0 {
-		str = fileStrings[b.title][strings.Index(fileStrings[b.title], ":")+2:len(fileStrings[b.title])]
-	} else if b.value > 0 {
+	if b.value > 0 {
 		str = fileStrings[b.title][strings.Index(fileStrings[b.value], ":")+2:len(fileStrings[b.value])]
+	} else if b.title > 0 {
+		str = fileStrings[b.title][strings.Index(fileStrings[b.title], ":")+2:len(fileStrings[b.title])]
 	}
 
 	if a.value > 0 {
@@ -176,16 +200,16 @@ func setString(a Element, b Element, fileStrings []string) {
 }
 
 func main() {
-	fileStrings, structs, _, idsCnt := readElementsFile("D:/go.json")
-	toChange, j:= readValuesFile("D:/values.json")
+	fileStrings, structs, _, elementsCount := readElementsFile("./TestcaseStructure.json")
+	toChange, rulesCount:= readValuesFile("./values.json")
 
-	for a := 0; a < idsCnt; a++ {
-		for b := 0; b < j; b++ {
+	for a := 0; a < elementsCount; a++ {
+		for b := 0; b < rulesCount; b++ {
 			if structs[a].id == toChange[b].id {
 				if structs[a].values < 0 && structs[a].params < 0 && structs[a].value > 0 {
 					fileStrings[structs[a].value]=formNewStr(fileStrings[structs[a].value], toChange[b].str)
 				} else if structs[a].values > 0 || structs[a].params > 0 {
-					for c:= a+1; (structs[a].level != (structs[c].level)) && c < idsCnt; c++ {
+					for c:= a+1; (structs[a].level != (structs[c].level)) && c < elementsCount; c++ {
 						num,_:=strconv.Atoi(toChange[b].str)
 						if structs[c].id == num {
 							setString(structs[a], structs[c], fileStrings)
@@ -197,8 +221,5 @@ func main() {
 		}
 	}
 
-	writeResultFile("D:/StructureWithValues.json", fileStrings)
-
-	fmt.Print("Hi")
-
+	writeResultFile("./StructureWithValues.json", fileStrings)
 }
