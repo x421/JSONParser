@@ -7,6 +7,20 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	main()
+	m.Run()
+
+	strsTest1, _, size1, _:=readElementsFile("./test_json/StructureWithValuesTest.json")
+	strsTest2, _, size2, _:=readElementsFile("./StructureWithValues.json")
+	if size1 != size2 {
+		panic("Files not equals")
+	}
+
+	for i:=0;i<size1;i++{
+		if strings.Compare(strsTest1[i], strsTest2[i]) != 0 {
+			panic("Files not equals")
+		}
+	}
 
 }
 
@@ -75,7 +89,7 @@ func TestWriteResultFile(t *testing.T) {
 
 func TestFormNewStr(t *testing.T) {
 	str:="\"value\": \"old\""
-	str=formNewStr(str, "\"new\"")
+	str=formNewStr(str, "\"new\"", 0, []string{"\"value\": \"old\"", "}"})
 	if strings.Contains(str, "\"value\": \"new\"") == false {
 		t.Errorf("test_formNewStr failed! %s != %s", str, "\"value\": \"new\"")
 	}

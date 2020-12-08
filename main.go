@@ -32,7 +32,9 @@ type Values struct {
 	str string
 }
 
-
+/*
+	Функция записи файла error.json
+ */
 func writeError() {
 	writeResultFile("./error.json", []string{
 		"{",
@@ -44,6 +46,9 @@ func writeError() {
 	panic("Error while parse file!")
 }
 
+/*
+	Функция валидации элемента
+*/
 func validateElement(elem Element) {
 
 	if (elem.id < 0) || (elem.title < 0) ||
@@ -80,6 +85,8 @@ func readElementsFile(path string) ([]string, []Element, int, int){
 			id, _ := strconv.Atoi(s)
 			tmp = Element{ id, i, strings.Count(str, "\t"), -1, -1, -1, -1}
 			strct = true
+			i++
+			continue
 		} else if strings.Contains(str, "\"id\":") && strct == true {
 			validateElement(tmp)
 			structs=append(structs, tmp)
@@ -88,6 +95,8 @@ func readElementsFile(path string) ([]string, []Element, int, int){
 			tmp = Element{ id, i, strings.Count(str, "\t"), -1, -1, -1, -1}
 
 			idsCnt++
+			i++
+			continue
 		}
 
 
@@ -100,7 +109,7 @@ func readElementsFile(path string) ([]string, []Element, int, int){
 				tmp.values = i
 			} else if strings.Contains(str, "\"params\":") {
 				tmp.params = i
-			} else {
+			} else if !strings.Contains(str, "}"){
 				writeError()
 			}
 		}
@@ -144,7 +153,8 @@ func readValuesFile(path string) ([]Values, int) {
 			tcTmp.str = strings.TrimSpace(s)
 			toChange=append(toChange, tcTmp)
 			j++
-		}else if idStrNum+1 != strNum {
+			idStrNum = 0
+		}else if idStrNum+1 != strNum  && idStrNum != 0{
 			writeError()
 		}
 		strNum++
@@ -168,14 +178,12 @@ func writeResultFile(path string, fileStrings []string) {
 	w.Flush()
 }
 
-/*
-	Функция формирования измененной строки.
-	(Замена value или title в строке)
-	in - строка, подлежащая перезаписи
-	concat - добавляемое значение
- */
-func formNewStr(in string, concat string) string {
-	return in[0:strings.Index(in, ":")+2]+concat
+func formNewStr(in string, concat string, num int, fileStrings []string) string {
+	if strings.Contains(fileStrings[num+1], "}") == true{
+		return in[0:strings.Index(in, ":")+2] + concat
+	} else {
+		return in[0:strings.Index(in, ":")+2] + concat+","
+	}
 }
 
 /*
@@ -188,14 +196,16 @@ func setString(a Element, b Element, fileStrings []string) {
 	str:= ""
 	if b.value > 0 {
 		str = fileStrings[b.title][strings.Index(fileStrings[b.value], ":")+2:len(fileStrings[b.value])]
+		str = strings.ReplaceAll(str, ",", "")
 	} else if b.title > 0 {
 		str = fileStrings[b.title][strings.Index(fileStrings[b.title], ":")+2:len(fileStrings[b.title])]
+		str = strings.ReplaceAll(str, ",", "")
 	}
 
 	if a.value > 0 {
-		fileStrings[a.value]=formNewStr(fileStrings[a.value], str)
+		fileStrings[a.value]=formNewStr(fileStrings[a.value], str, a.value, fileStrings)
 	}else if a.title > 0 {
-		fileStrings[a.title]=formNewStr(fileStrings[a.title], str)
+		fileStrings[a.title]=formNewStr(fileStrings[a.title], str, a.value, fileStrings)
 	}
 }
 
@@ -207,7 +217,7 @@ func main() {
 		for b := 0; b < rulesCount; b++ {
 			if structs[a].id == toChange[b].id {
 				if structs[a].values < 0 && structs[a].params < 0 && structs[a].value > 0 {
-					fileStrings[structs[a].value]=formNewStr(fileStrings[structs[a].value], toChange[b].str)
+					fileStrings[structs[a].value]=formNewStr(fileStrings[structs[a].value], toChange[b].str, structs[a].value, fileStrings)
 				} else if structs[a].values > 0 || structs[a].params > 0 {
 					for c:= a+1; (structs[a].level != (structs[c].level)) && c < elementsCount; c++ {
 						num,_:=strconv.Atoi(toChange[b].str)
